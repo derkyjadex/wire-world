@@ -1,0 +1,26 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Wire World</title>
+    <script src="elm.js"></script>
+  </head>
+  <body>
+    <script type="text/javascript">
+      var app = Elm.Main.fullscreen();
+
+      app.ports.save.subscribe(function (value) {
+        console.log(value);
+        localStorage.setItem('grid', value);
+      });
+
+      app.ports.load.subscribe(function (_) {
+        console.log('Loading...');
+        var value = localStorage.getItem('grid');
+        console.log(value);
+
+        app.ports.onLoad.send(value);
+      });
+    </script>
+  </body>
+</html>

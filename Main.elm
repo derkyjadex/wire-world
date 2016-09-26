@@ -7,6 +7,10 @@ import Html.App as App
 import Platform exposing (Program)
 import GenericDict as Dict
 import Time exposing (every, millisecond)
+import Json.Encode as Encode
+import Json.Decode as Decode
+import Json.Decode exposing (Decoder)
+import Ports exposing (..)
 
 
 type alias Coord =
@@ -31,6 +35,9 @@ type alias Model =
 type Msg
     = Tick
     | Click Coord
+    | Save
+    | Load
+    | OnLoad String
 
 
 main : Program Never
@@ -89,12 +96,26 @@ update msg model =
                 grid =
                     case Dict.get coord model.grid of
                         Nothing ->
-                            Dict.insert coord Conductor model.grid
+                            Dict.insert coord Head model.grid
 
                         Just _ ->
                             Dict.remove coord model.grid
             in
                 ( { model | grid = grid }, Cmd.none )
+
+        Save ->
+            ( model, save (Encode.encode 0 (encodeGrid model.grid)) )
+
+        Load ->
+            ( model, load () )
+
+        OnLoad s ->
+            case Decode.decodeString decodeGrid s of
+                Ok grid ->
+                    ( { model | grid = grid }, Cmd.none )
+
+                Err _ ->
+                    ( model, Cmd.none )
 
 
 tick : Grid -> Grid
@@ -144,7 +165,56 @@ cellNeighbours grid ( x, y ) =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    every (500 * millisecond) (\_ -> Tick)
+    Sub.batch
+        [ every (50 * millisecond) (\_ -> Tick)
+        , onLoad OnLoad
+        ]
+
+
+encodeGrid : Grid -> Encode.Value
+encodeGrid grid =
+    Encode.list
+        (Dict.toList grid
+            |> List.map
+                (\( ( x, y ), cell ) ->
+                    Encode.list
+                        [ Encode.int x
+                        , Encode.int y
+                        , Encode.string (toString cell)
+                        ]
+                )
+        )
+
+
+decodeGrid : Decoder Grid
+decodeGrid =
+    Decode.map (Dict.fromList compareCoord)
+        (Decode.list
+            (Decode.tuple3 (\x y cell -> ( ( x, y ), cell ))
+                Decode.int
+                Decode.int
+                decodeCell
+            )
+        )
+
+
+decodeCell : Decoder Cell
+decodeCell =
+    Decode.string
+        `Decode.andThen` (\s ->
+                            case s of
+                                "Head" ->
+                                    Decode.succeed Head
+
+                                "Tail" ->
+                                    Decode.succeed Tail
+
+                                "Conductor" ->
+                                    Decode.succeed Conductor
+
+                                _ ->
+                                    Decode.fail "Unknown cell type"
+                         )
 
 
 cellFill : Maybe Cell -> String
@@ -178,22 +248,48 @@ viewCell grid ( x, y ) =
 
 viewGrid : Grid -> Svg Msg
 viewGrid grid =
-    g [ A.transform "translate(250, 250)" ]
+    g [ A.transform "translate(390, 290)" ]
         (allCells
             |> List.map (viewCell grid)
         )
+
+
+saveButton : Svg Msg
+saveButton =
+    rect
+        [ A.x "0"
+        , A.y "0"
+        , A.width "30"
+        , A.height "30"
+        , A.fill "pink"
+        , E.onClick Save
+        ]
+        []
+
+
+loadButton : Svg Msg
+loadButton =
+    rect
+        [ A.x "40"
+        , A.y "0"
+        , A.width "30"
+        , A.height "30"
+        , A.fill "green"
+        , E.onClick Load
+        ]
+        []
 
 
 view : Model -> Svg Msg
 view model =
     svg
         [ A.style "background-color: #000000"
-        , A.width "500"
-        , A.height "500"
+        , A.width "800"
+        , A.height "600"
         ]
-        [ viewGrid model.grid ]
+        [ viewGrid model.grid, saveButton, loadButton ]
 
 
 allCells : List Coord
 allCells =
-    List.concatMap (\x -> List.map (\y -> ( x, y )) [-10..10]) [-10..10]
+    List.concatMap (\x -> List.map (\y -> ( x, y )) [-14..14]) [-19..19]
