@@ -2,6 +2,7 @@ module Main exposing (..)
 
 import Svg exposing (..)
 import Svg.Attributes as A
+import Svg.Events as E
 import Html.App as App
 import Platform exposing (Program)
 import GenericDict as Dict
@@ -29,6 +30,7 @@ type alias Model =
 
 type Msg
     = Tick
+    | Click Coord
 
 
 main : Program Never
@@ -82,6 +84,18 @@ update msg model =
         Tick ->
             ( { model | grid = tick model.grid }, Cmd.none )
 
+        Click coord ->
+            let
+                grid =
+                    case Dict.get coord model.grid of
+                        Nothing ->
+                            Dict.insert coord Conductor model.grid
+
+                        Just _ ->
+                            Dict.remove coord model.grid
+            in
+                ( { model | grid = grid }, Cmd.none )
+
 
 tick : Grid -> Grid
 tick grid =
@@ -133,37 +147,44 @@ subscriptions model =
     every (500 * millisecond) (\_ -> Tick)
 
 
-cellFill : Cell -> String
+cellFill : Maybe Cell -> String
 cellFill cell =
     case cell of
-        Head ->
+        Just Head ->
             "red"
 
-        Tail ->
+        Just Tail ->
             "orange"
 
-        Conductor ->
+        Just Conductor ->
             "yellow"
 
+        Nothing ->
+            "#333"
 
-viewCell : ( Coord, Cell ) -> Svg a
-viewCell ( ( x, y ), cell ) =
+
+viewCell : Grid -> Coord -> Svg Msg
+viewCell grid ( x, y ) =
     rect
         [ A.x (toString (x * 20))
         , A.y (toString (y * 20))
-        , A.width "20"
-        , A.height "20"
-        , A.fill (cellFill cell)
+        , A.width "19"
+        , A.height "19"
+        , A.fill (cellFill (Dict.get ( x, y ) grid))
+        , E.onClick (Click ( x, y ))
         ]
         []
 
 
-viewGrid : Grid -> Svg a
+viewGrid : Grid -> Svg Msg
 viewGrid grid =
-    g [ A.transform "translate(250, 250)" ] (Dict.toList grid |> List.map viewCell)
+    g [ A.transform "translate(250, 250)" ]
+        (allCells
+            |> List.map (viewCell grid)
+        )
 
 
-view : Model -> Svg a
+view : Model -> Svg Msg
 view model =
     svg
         [ A.style "background-color: #000000"
@@ -171,3 +192,8 @@ view model =
         , A.height "500"
         ]
         [ viewGrid model.grid ]
+
+
+allCells : List Coord
+allCells =
+    List.concatMap (\x -> List.map (\y -> ( x, y )) [-10..10]) [-10..10]
