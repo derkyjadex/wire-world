@@ -58,14 +58,18 @@ init : ( Model, Cmd Msg )
 init =
     ( { grid =
             Dict.fromList compareCoord
-                [ ( ( 1, 1 ), Head )
-                , ( ( 0, 1 ), Tail )
-                , ( ( -1, 1 ), Conductor )
-                , ( ( -1, 0 ), Conductor )
-                , ( ( -1, -1 ), Conductor )
-                , ( ( 0, -1 ), Conductor )
-                , ( ( 1, -1 ), Conductor )
-                , ( ( 1, 0 ), Conductor )
+                [ ( ( 1, 2 ), Head )
+                , ( ( 0, 2 ), Tail )
+                , ( ( -1, 2 ), Conductor )
+                , ( ( 2, -1 ), Conductor )
+                , ( ( 2, 0 ), Conductor )
+                , ( ( 2, 1 ), Conductor )
+                , ( ( 1, -2 ), Conductor )
+                , ( ( 0, -2 ), Conductor )
+                , ( ( -1, -2 ), Conductor )
+                , ( ( -2, -1 ), Conductor )
+                , ( ( -2, 0 ), Conductor )
+                , ( ( -2, 1 ), Conductor )
                 ]
       }
     , Cmd.none
@@ -133,10 +137,10 @@ cellFill : Cell -> String
 cellFill cell =
     case cell of
         Head ->
-            "blue"
+            "red"
 
         Tail ->
-            "red"
+            "orange"
 
         Conductor ->
             "yellow"
